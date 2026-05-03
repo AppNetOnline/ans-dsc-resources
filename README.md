@@ -36,8 +36,13 @@ scripts/
   FortiClientVPN.Prepare.ps1
 
 Install-DscResources.ps1
-POWERSHELL_STYLE_GUIDE.md
 ```
+
+## Requirements
+
+- Windows PowerShell 5.1
+- Administrator rights for local module installation
+- DSC support enabled on the target system
 
 ## Install
 
@@ -68,7 +73,7 @@ properties:
         InstallerUri: https://filestore.fortinet.com/forticlient/downloads/FortiClientVPNInstaller.exe
         InstallerFolder: C:\ProgramData\Installers\FortiClientVPN
         InstallerFileName: FortiClientVPN.msi
-        PrepareScriptUri: https://raw.githubusercontent.com/AppNetOnline/ans-dsc-scripts/main/scripts/FortiClientVPN.Prepare.ps1
+        PrepareScriptUri: https://raw.githubusercontent.com/AppNetOnline/ans-dsc-resources/main/scripts/FortiClientVPN.Prepare.ps1
         PrepareTimeoutMinutes: 10
         MsiProperties: REBOOT=ReallySuppress DONT_PROMPT_REBOOT=1
   configurationVersion: 0.2.0

@@ -15,7 +15,7 @@
     PrivateData          = @{
         PSData = @{
             Tags       = @('DSC', 'Installer', 'MSI', 'EXE')
-            ProjectUri = 'https://github.com/AppNetOnline/ans-dsc-scripts'
+            ProjectUri = 'https://github.com/AppNetOnline/ans-dsc-resources'
         }
     }
 }
