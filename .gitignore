@@ -4,7 +4,6 @@
 *.zip
 artifacts/
 Publish-DscRemoteInstallerModule.ps1
-POWERSHELL_STYLE_GUIDE.md
 .DS_Store
 Thumbs.db
 AGENTS.md
