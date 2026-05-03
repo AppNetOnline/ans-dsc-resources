@@ -1,0 +1,18 @@
+[ClassVersion("0.1.0.0"), FriendlyName("RemoteInstaller")]
+class RemoteInstaller : OMI_BaseResource
+{
+    [Key] String Name;
+    [Required] String DisplayNamePattern;
+    [Write, ValueMap{"Present","Absent"}, Values{"Present","Absent"}] String Ensure;
+    [Write, ValueMap{"Exe","Msi"}, Values{"Exe","Msi"}] String InstallerType;
+    [Write] String InstallerUri;
+    [Write] String InstallerFolder;
+    [Write] String InstallerFileName;
+    [Write] String DesiredVersion;
+    [Write] String PrepareScriptUri;
+    [Write] String InstallArguments;
+    [Write] String MsiProperties;
+    [Write] Uint32 PrepareTimeoutMinutes;
+    [Read] String InstalledVersion;
+    [Read] String ResolvedInstallerPath;
+};

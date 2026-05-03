@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://aka.ms/configuration-dsc-schema/0.2
+properties:
+  resources:
+    - resource: DscRemoteInstaller/RemoteInstaller
+      directives:
+        description: Install a generic package after a custom prepare script stages the installer
+      settings:
+        Name: FortiClientVPN
+        Ensure: Present
+        DisplayNamePattern: FortiClient.*VPN
+        InstallerType: Msi
+        InstallerUri: https://filestore.fortinet.com/forticlient/downloads/FortiClientVPNInstaller.exe
+        InstallerFolder: C:\ProgramData\Installers\FortiClientVPN
+        InstallerFileName: FortiClientVPN.msi
+        PrepareScriptUri: https://raw.githubusercontent.com/AppNetOnline/ans-dsc-scripts/main/scripts/FortiClientVPN.Prepare.ps1
+        PrepareTimeoutMinutes: 10
+        MsiProperties: REBOOT=ReallySuppress DONT_PROMPT_REBOOT=1
+  configurationVersion: 0.2.0

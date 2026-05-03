@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/configuration-dsc-schema/0.2
+properties:
+  resources:
+    - resource: DscRemoteInstaller/RemoteInstaller
+      directives:
+        description: Install a generic MSI or EXE package
+      settings:
+        Name: Example App
+        Ensure: Present
+        DisplayNamePattern: Example App
+        InstallerType: Msi
+        InstallerUri: https://example.com/installers/ExampleApp.msi
+        InstallerFolder: C:\ProgramData\Installers\ExampleApp
+        InstallerFileName: ExampleApp.msi
+        DesiredVersion: 1.0.0.0
+        MsiProperties: REBOOT=ReallySuppress
+  configurationVersion: 0.2.0
