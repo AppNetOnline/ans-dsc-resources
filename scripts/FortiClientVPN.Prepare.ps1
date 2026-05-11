@@ -3,8 +3,33 @@ Param(
     [String]$InstallerUri,
     [String]$InstallerFolder,
     [String]$InstallerPath,
+    [String]$DesiredVersion,
     [UInt32]$PrepareTimeoutMinutes = 10
 );
+
+Function Get-MsiProductVersion {
+    Param(
+        [Parameter(Mandatory = $True)]
+        [String]$Path
+    );
+
+    Try {
+        $WindowsInstaller = New-Object -ComObject WindowsInstaller.Installer;
+        $Database = $WindowsInstaller.OpenDatabase($Path, 0);
+        $View = $Database.OpenView("SELECT Value FROM Property WHERE Property = 'ProductVersion'");
+        $View.Execute();
+        $Record = $View.Fetch();
+
+        If ($Record) {
+            Return $Record.StringData(1);
+        };
+
+        Return $Null;
+    }
+    Catch {
+        Return $Null;
+    };
+};
 
 $BootstrapperPath = Join-Path $InstallerFolder 'FortiClientVPNInstaller.exe';
 $DesiredVersionPath = Join-Path $InstallerFolder 'FortiClientVPN.desiredversion';
@@ -15,11 +40,23 @@ If (!(Test-Path $InstallerFolder)) {
 };
 
 If (Test-Path $InstallerPath) {
-    Return;
+    $ExistingVersion = Get-MsiProductVersion -Path $InstallerPath;
+
+    If ($ExistingVersion -eq $DesiredVersion) {
+        "[$(Get-Date -Format o)] Existing staged MSI already matches desired version: $ExistingVersion" |
+        Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+
+        Return;
+    };
+
+    "[$(Get-Date -Format o)] Removing existing staged MSI. ExistingVersion=[$ExistingVersion], DesiredVersion=[$DesiredVersion]" |
+    Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+
+    Remove-Item -Path $InstallerPath -Force;
 };
 
 "[$(Get-Date -Format o)] Downloading bootstrapper: $InstallerUri" |
-    Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 
@@ -29,7 +66,7 @@ Invoke-WebRequest `
     -UseBasicParsing;
 
 "[$(Get-Date -Format o)] Starting bootstrapper to stage MSI." |
-    Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
 
 $Process = Start-Process -FilePath $BootstrapperPath -PassThru;
 
@@ -41,43 +78,52 @@ Try {
         Start-Sleep -Seconds 5;
 
         $FoundMsi = Get-ChildItem `
-            -Path $env:LOCALAPPDATA\Temp `
+            -Path 'C:\ProgramData\Applications\Cache', $env:LOCALAPPDATA\Temp `
             -Recurse `
             -Filter 'FortiClientVPN.msi' `
             -ErrorAction SilentlyContinue |
-                Sort-Object LastWriteTime -Descending |
-                Select-Object -First 1;
+        ForEach-Object {
+            $MsiVersion = Get-MsiProductVersion -Path $_.FullName;
 
-        If (!$FoundMsi) {
-            $FoundMsi = Get-ChildItem `
-                -Path 'C:\ProgramData\Applications\Cache', 'C:\ProgramData' `
-                -Recurse `
-                -Filter 'FortiClientVPN.msi' `
-                -ErrorAction SilentlyContinue |
-                    Sort-Object LastWriteTime -Descending |
-                    Select-Object -First 1;
-        };
+            [PSCustomObject]@{
+                FullName      = $_.FullName;
+                Version       = $MsiVersion;
+                LastWriteTime = $_.LastWriteTime;
+            };
+        } |
+        Where-Object {
+            $_.Version -eq $DesiredVersion
+        } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1;
     };
 
     If (!$FoundMsi) {
-        Throw 'FortiClientVPN.msi was not found after launching the Fortinet bootstrapper.';
+        Throw "FortiClientVPN.msi version [$DesiredVersion] was not found after launching the Fortinet bootstrapper.";
     };
 
     "[$(Get-Date -Format o)] Found MSI: $($FoundMsi.FullName)" |
-        Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+    Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+
+    "[$(Get-Date -Format o)] Found MSI version: $($FoundMsi.Version)" |
+    Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
 
     Copy-Item -Path $FoundMsi.FullName -Destination $InstallerPath -Force;
 
     "[$(Get-Date -Format o)] Copied MSI to: $InstallerPath" |
-        Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+    Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
 
-    $MsiVersion = (Get-Item $InstallerPath).VersionInfo.ProductVersion;
+    $MsiVersion = Get-MsiProductVersion -Path $InstallerPath;
 
     If ($MsiVersion) {
         $MsiVersion | Out-File -FilePath $DesiredVersionPath -Encoding ascii -Force;
 
-        "[$(Get-Date -Format o)] MSI product version: $MsiVersion" |
-            Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+        "[$(Get-Date -Format o)] Staged MSI product version: $MsiVersion" |
+        Out-File -FilePath $ExtractLogPath -Append -Encoding utf8;
+    };
+
+    If ($MsiVersion -ne $DesiredVersion) {
+        Throw "Staged MSI version [$MsiVersion] does not match desired version [$DesiredVersion].";
     };
 }
 Finally {
@@ -88,5 +134,5 @@ Finally {
     Get-Process `
         -Name 'FortiClientVPNInstaller', 'FortiClientVPNOnlineInstaller', 'FortiClientVPN' `
         -ErrorAction SilentlyContinue |
-            Stop-Process -Force -ErrorAction SilentlyContinue;
+    Stop-Process -Force -ErrorAction SilentlyContinue;
 };
